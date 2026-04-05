@@ -1,5 +1,5 @@
 variable "name" {
-  type = list(any)
+  type = string
 }
 
 variable "ami" {

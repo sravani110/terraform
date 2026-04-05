@@ -2,14 +2,13 @@ data "aws_iam_role" "jenkins-iam" {
   name = "haha"
 }
 
-
 data "aws_iam_instance_profile" "jenkins_profile" {
   name = "haha"
 }
 
 resource "aws_instance" "ec2" {
  tags = {
-  Name = var.name[count.index]
+  Name = var.name
  }
  ami = var.ami
  instance_type = var.instance_type
@@ -17,7 +16,6 @@ resource "aws_instance" "ec2" {
  subnet_id = aws_subnet.public[0].id
  vpc_security_group_ids = [aws_security_group.sg.id]
  iam_instance_profile = data.aws_iam_instance_profile.jenkins_profile.name
- count = 2
 }
 
 resource "aws_key_pair" "key" {
