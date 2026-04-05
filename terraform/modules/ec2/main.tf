@@ -1,9 +1,9 @@
 data "aws_iam_role" "jenkins-iam" {
-  name = "haha"
+  name = "jenkins"
 }
 
 data "aws_iam_instance_profile" "jenkins_profile" {
-  name = "haha"
+  name = "jenkins"
 }
 
 resource "aws_instance" "ec2" {
@@ -16,6 +16,33 @@ resource "aws_instance" "ec2" {
  subnet_id = aws_subnet.public[0].id
  vpc_security_group_ids = [aws_security_group.sg.id]
  iam_instance_profile = data.aws_iam_instance_profile.jenkins_profile.name
+ user_data = <<-EOF
+    #!/bin/bash
+  
+    # Install Jenkins
+    sudo dnf update -y
+    sudo wget -O /etc/yum.repos.d/jenkins.repo https://pkg.jenkins.io/redhat-stable/jenkins.repo
+    sudo rpm --import https://pkg.jenkins.io/redhat-stable/jenkins.io-2023.key
+    sudo dnf upgrade
+    sudo dnf install java-17-amazon-corretto -y
+    sudo dnf install jenkins git -y
+    sudo systemctl start jenkins
+    sudo systemctl enable jenkins
+    sudo systemctl status jenkins
+    sudo usermod -aG docker jenkins
+
+    # Install Docker
+    sudo yum install docker -y
+    sudo systemctl start docker
+    sudo systemctl enable docker
+
+    # Install kubectl
+    curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+    chmod +x kubectl
+    sudo mv kubectl /usr/local/bin/
+
+  EOF
+
 }
 
 resource "aws_key_pair" "key" {
