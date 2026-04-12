@@ -1,9 +1,43 @@
-data "aws_iam_role" "jenkins-iam" {
-  name = "jenkins"
+#IAM Role for Jenkins server
+resource "aws_iam_role" "jenkins-server" {
+
+  name = "jenkins-iam"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Principal = {
+        Service = "ec2.amazonaws.com"
+      }
+      Action = "sts:AssumeRole"
+    }]
+  })
 }
 
-data "aws_iam_instance_profile" "jenkins_profile" {
-  name = "jenkins"
+resource "aws_iam_role_policy_attachment" "jenkins-server-EKSWorkerNodePolicy" {
+  role       = aws_iam_role.jenkins-server.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
+}
+
+resource "aws_iam_role_policy_attachment" "jenkins-server-EKSClusterPolicy" {
+  role       = aws_iam_role.jenkins-server.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
+}
+
+resource "aws_iam_role_policy_attachment" "jenkins-server-EKSServicePolicy" {
+  role       = aws_iam_role.jenkins-server.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSServicePolicy"
+}
+
+resource "aws_iam_role_policy_attachment" "jenkins-server-EC2ContainerRegistryFullAccess" {
+  role       = aws_iam_role.jenkins-server.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryFullAccess"
+}
+
+resource "aws_iam_instance_profile" "jenkins-server-profile" {
+ name = "jenkins-profile"
+ role = "jenkins-iam"
 }
 
 resource "aws_instance" "ec2" {
@@ -15,34 +49,20 @@ resource "aws_instance" "ec2" {
  key_name = aws_key_pair.key.id
  subnet_id = aws_subnet.public[0].id
  vpc_security_group_ids = [aws_security_group.sg.id]
- iam_instance_profile = data.aws_iam_instance_profile.jenkins_profile.name
- user_data = <<-EOF
-    #!/bin/bash
-  
-    # Install Jenkins
-    sudo dnf update -y
-    sudo wget -O /etc/yum.repos.d/jenkins.repo https://pkg.jenkins.io/redhat-stable/jenkins.repo
-    sudo rpm --import https://pkg.jenkins.io/redhat-stable/jenkins.io-2023.key
-    sudo dnf upgrade
-    sudo dnf install java-17-amazon-corretto -y
-    sudo dnf install jenkins git -y
-    sudo systemctl start jenkins
-    sudo systemctl enable jenkins
-    sudo systemctl status jenkins
-    sudo usermod -aG docker jenkins
+ iam_instance_profile = aws_iam_instance_profile.jenkins-server-profile.name
+ user_data = file("jenkins.sh")
+}
 
-    # Install Docker
-    sudo yum install docker -y
-    sudo systemctl start docker
-    sudo systemctl enable docker
-
-    # Install kubectl
-    curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-    chmod +x kubectl
-    sudo mv kubectl /usr/local/bin/
-
-  EOF
-
+resource "aws_instance" "sonarqube" {
+ tags = {
+  Name = "SonarQube"
+ }
+ ami = var.ami
+ instance_type = var.instance_type
+ key_name = aws_key_pair.key.id
+ subnet_id = aws_subnet.public[0].id
+ vpc_security_group_ids = [aws_security_group.sg.id]
+ user_data = file("sonarqube.sh")
 }
 
 resource "aws_key_pair" "key" {
@@ -195,7 +215,7 @@ resource "aws_eks_cluster" "eks" {
     subnet_ids = aws_subnet.public[*].id
     
   }
-
+  
   depends_on = [
     aws_iam_role_policy_attachment.eks_cluster_AmazonEKSClusterPolicy,
     aws_iam_role_policy_attachment.eks_cluster_AmazonEKSServicePolicy
