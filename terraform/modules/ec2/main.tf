@@ -35,6 +35,11 @@ resource "aws_iam_role_policy_attachment" "jenkins-server-EC2ContainerRegistryFu
   policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryFullAccess"
 }
 
+resource "aws_iam_role_policy_attachment" "jenkins-server-AmazonEKS_CNI_Policy" {
+  role       = aws_iam_role.jenkins-server.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
+}
+
 resource "aws_iam_instance_profile" "jenkins-server-profile" {
  name = "jenkins-profile"
  role = "jenkins-iam"
