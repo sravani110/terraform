@@ -1,4 +1,4 @@
-/* #IAM Role for Jenkins server
+#IAM Role for Jenkins server
 resource "aws_iam_role" "jenkins-server" {
 
   name = "jenkins-iam"
@@ -183,7 +183,7 @@ image_scanning_configuration {
 scan_on_push = true
 }
 }
-*/
+
 #IAM Role for Cluster Control Plane 
 resource "aws_iam_role" "eks_cluster_role" {
 
